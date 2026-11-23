@@ -9,6 +9,8 @@ namespace UpsideDownFishing
     ///   Right mouse drag : look around        WASD/QE : move head
     ///   Mouse            : aim rod            Left mouse : trigger (hold, flick mouse up, release = cast; hold = reel)
     ///   B : switch rod   Y : collection book  X : rescan room
+    ///   R : crank the reel (Shift = faster)   Mouse wheel : drag knob   H : hook a fish   L : test a landing
+    ///   G : left grip (grab a fish / let go under the open bottom of the aquarium)
     /// </summary>
     public class EditorSimulator : MonoBehaviour
     {
@@ -29,7 +31,7 @@ namespace UpsideDownFishing
             Debug.Log("[UDF] Editor simulator active: RMB look, WASD move, LMB trigger, B rod, Y book, X rescan.");
         }
 
-        void OnDestroy() { if (m_Active) XRInput.SimulatedSource = null; }
+        void OnDestroy() { if (m_Active) { XRInput.SimulatedSource = null; ReelCrank.SimulatedTurnsPerSecond = 0; } }
 
         void Update()
         {
@@ -49,7 +51,29 @@ namespace UpsideDownFishing
             if (kb.eKey.isPressed) move += Vector3.up;
             if (kb.qKey.isPressed) move += Vector3.down;
             head.transform.localPosition += Quaternion.Euler(0, m_Yaw, 0) * move * (1.5f * Time.deltaTime);
+            // R = crank the reel with the left hand (Shift+R = fast); scroll wheel = drag knob
+            ReelCrank.SimulatedTurnsPerSecond = kb.rKey.isPressed ? (kb.leftShiftKey.isPressed ? 2.6f : 1.4f) : 0f;
+            // L = test the landing moment (hooks and lands the nearest fish)
+            if (kb.lKey.wasPressedThisFrame) TestLanding();
+            // H = hook the nearest fish and start a fight
+            if (kb.hKey.wasPressedThisFrame) TestHook();
         }
+
+        public static void TestHook()
+        {
+            var rod = FindAnyObjectByType<FishingRod>();
+            if (rod != null) rod.DebugHook();
+        }
+
+        /// <summary>Same as pressing L; callable from editor tooling.</summary>
+        public static void TestLanding()
+        {
+            var rod = FindAnyObjectByType<FishingRod>();
+            if (rod != null) rod.DebugLand();
+        }
+
+        /// <summary>Testing: put the simulated left controller at this world position (G = grip).</summary>
+        public static Vector3? LeftHandWorldOverride;
 
         XRInput.HandState Sample(Hand hand)
         {
@@ -76,13 +100,15 @@ namespace UpsideDownFishing
             }
             else
             {
-                Vector3 world = h.position - h.right * 0.2f - h.up * 0.3f + h.forward * 0.35f;
+                Vector3 world = LeftHandWorldOverride ?? (h.position - h.right * 0.2f - h.up * 0.3f + h.forward * 0.35f);
+                s.grip = kb != null && kb.gKey.isPressed ? 1f : 0f;
                 s.localPosition = trackingSpace.InverseTransformPoint(world);
                 s.localRotation = Quaternion.Inverse(trackingSpace.rotation) * Quaternion.LookRotation(-h.up + h.forward * 0.6f, h.forward);
                 s.localVelocity = (s.localPosition - m_PrevLeft) / Mathf.Max(Time.deltaTime, 1e-4f);
                 m_PrevLeft = s.localPosition;
                 s.secondaryButton = kb != null && kb.yKey.isPressed;
                 s.primaryButton = kb != null && kb.xKey.isPressed;
+                if (mouse != null) s.stick = new Vector2(0, Mathf.Clamp(mouse.scroll.ReadValue().y * 0.5f, -1f, 1f));
             }
             return s;
         }

@@ -57,7 +57,7 @@ namespace UpsideDownFishing
             var room = RoomModel.CreateSimulated(headPos, floor);
             // Keep the water reachable: ceiling roughly 1.0 m above the head.
             room.ceilingY = Mathf.Max(floor + 2.3f, headPos.y + 0.9f);
-            Publish(room, "模拟房间 (Simulated room)");
+            Publish(room, "Simulated room");
         }
 
         void Publish(RoomModel room, string msg)
@@ -82,7 +82,7 @@ namespace UpsideDownFishing
         async void StartSceneCapture()
         {
             CurrentStatus = Status.Querying;
-            StatusMessage = "正在读取房间数据…";
+            StatusMessage = "Reading your room...";
             var r = await PXR_MixedReality.StartSenseDataProvider(PxrSenseDataProviderType.SceneCapture);
             if (r != PxrResult.SUCCESS)
             {
@@ -109,7 +109,7 @@ namespace UpsideDownFishing
                 // No room has been scanned yet: launch the system room-capture flow.
                 m_RoomScanRequested = true;
                 CurrentStatus = Status.WaitingForRoomScan;
-                StatusMessage = "请先扫描房间 (Scan your room)";
+                StatusMessage = "Please scan your room first";
                 var scan = await PXR_MixedReality.StartSceneCaptureAsync();
                 if (this == null) return;
                 if (scan == PxrResult.SUCCESS) LoadSceneData();
@@ -188,7 +188,7 @@ namespace UpsideDownFishing
             room.ceilingY = ceilingCount > 0 ? ceilingSum / ceilingCount : room.floorY + 2.6f;
             if (room.Height < 1.8f || room.Height > 6f) room.ceilingY = room.floorY + 2.6f; // sanity
             m_RoomScanRequested = false;
-            Publish(room, hasCeiling ? "已识别天花板 (Ceiling detected)" : "使用地面轮廓 (Using floor outline)");
+            Publish(room, hasCeiling ? "Ceiling detected" : "Using floor outline");
         }
 
         /// <summary>

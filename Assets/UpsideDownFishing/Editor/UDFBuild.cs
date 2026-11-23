@@ -8,7 +8,7 @@ namespace UpsideDownFishing.EditorTools
     /// <summary>Android APK build entry points (menu + -executeMethod).</summary>
     public static class UDFBuild
     {
-        public const string ApkPath = "Builds/Android/UpsideDownFishing.apk";
+        public const string ApkPath = "Builds/Android/SeaAbove.apk";
 
         [MenuItem("UpsideDownFishing/Build Android APK (Development)", priority = 20)]
         public static void BuildDevelopmentMenu() => Build(true);

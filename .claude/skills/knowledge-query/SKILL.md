@@ -73,7 +73,7 @@ the platform question and proceed directly.
 
 ### Step 3: Delegate or Execute
 
-If the Agent tool is available, spawn a subagent with the Subagent Prompt Template below.
+If the Agent tool is available, spawn a subagent with the Subagent Prompt Template below, passing `model: "sonnet"`.
 Otherwise execute the same steps inline in the main thread and inform the user:
 
 > Note: Executing knowledge query inline (subagents not available in this environment).

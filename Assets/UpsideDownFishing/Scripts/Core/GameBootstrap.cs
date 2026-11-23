@@ -28,6 +28,7 @@ namespace UpsideDownFishing
         RoomGeometry m_Geometry;
         RoomDecorations m_Decor;
         CollectionManager m_Collection;
+        Aquarium m_Aquarium;
 
         void Awake()
         {
@@ -84,19 +85,33 @@ namespace UpsideDownFishing
             left.AddComponent<HandFollower>().hand = Hand.Left;
             var mitt = new MeshKit();
             mitt.Ellipsoid(Vector3.zero, new Vector3(0.035f, 0.025f, 0.05f), new Color(0.6f, 0.85f, 1f), new Color(0.35f, 0.55f, 0.95f), 6, 10);
-            MeshKit.Spawn("LeftMitt", mitt.Build("Mitt"), UDFAssets.Toon_(Color.white), left.transform);
+            var mittGo = MeshKit.Spawn("LeftMitt", mitt.Build("Mitt"), UDFAssets.Toon_(Color.white), left.transform);
 
             var rodGo = new GameObject("FishingRod");
             rodGo.transform.SetParent(right.transform, false);
             rodGo.SetActive(false); // configure before Start
             var rod = rodGo.AddComponent<FishingRod>();
             rod.water = m_Water; rod.school = m_School; rod.collection = m_Collection; rod.sfx = sfx;
+            rod.leftHand = left.transform; rod.leftHandVisual = mittGo.transform;
+
+            // aquarium + the free hand that carries landed fish into it
+            m_Aquarium = Make<Aquarium>("Aquarium");
+            var carrier = left.AddComponent<FishCarrier>();
+            carrier.hand = Hand.Left;
+            carrier.handTransform = left.transform;
+            carrier.aquarium = m_Aquarium;
+            carrier.collection = m_Collection;
+            carrier.sfx = sfx;
+            carrier.school = m_School;
+            carrier.head = m_Head.transform;
+            rod.carrier = carrier;
             rodGo.SetActive(true);
+            carrier.rod = rod;
 
             var hudGo = new GameObject("HUD");
             hudGo.SetActive(false);
             var hud = hudGo.AddComponent<GameHUD>();
-            hud.head = m_Head; hud.rod = rod; hud.collection = m_Collection; hud.room = m_Room; hud.leftHand = left.transform; hud.sfx = sfx;
+            hud.head = m_Head; hud.rod = rod; hud.collection = m_Collection; hud.room = m_Room; hud.leftHand = left.transform; hud.sfx = sfx; hud.carrier = carrier;
             hudGo.SetActive(true);
 
 #if UNITY_EDITOR
@@ -119,6 +134,7 @@ namespace UpsideDownFishing
             m_Geometry.Build(room);
             m_School.Init(m_Water);
             m_Decor.Init(room);
+            m_Aquarium.Build(room, m_Head.transform);
         }
     }
 }

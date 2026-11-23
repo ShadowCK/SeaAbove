@@ -9,12 +9,16 @@ namespace UpsideDownFishing
     /// </summary>
     public static class UDFAssets
     {
-        public const string Toon = "Toon", CeilingWater = "CeilingWater", WaterVolume = "WaterVolume", Glow = "Glow";
+        public const string Toon = "Toon", CeilingWater = "CeilingWater", WaterVolume = "WaterVolume", Glow = "Glow", Underwater = "Underwater",
+            WallCaustics = "WallCaustics", Bubble = "Bubble",
+            TankWater = "TankWater", Glass = "Glass", Icon = "Icon";
         static readonly Dictionary<string, Material> s_Base = new Dictionary<string, Material>();
 
         static readonly Dictionary<string, string> s_Shaders = new Dictionary<string, string>
         {
             { Toon, "UDF/Toon" }, { CeilingWater, "UDF/CeilingWater" }, { WaterVolume, "UDF/WaterVolume" }, { Glow, "UDF/Glow" },
+            { Underwater, "UDF/Underwater" }, { WallCaustics, "UDF/WallCaustics" }, { Bubble, "UDF/Bubble" },
+            { TankWater, "UDF/TankWater" }, { Glass, "UDF/Glass" }, { Icon, "UDF/Icon" },
         };
 
         public static Material Base(string name)

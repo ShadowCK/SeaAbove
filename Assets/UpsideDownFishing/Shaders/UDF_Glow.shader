@@ -6,6 +6,7 @@ Shader "UDF/Glow"
     {
         _BaseColor ("Tint", Color) = (1,1,1,1)
         _Soft ("Round Soft Particle", Range(0,1)) = 0
+        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("ZTest (8 = Always, for HUD)", Float) = 4
     }
     SubShader
     {
@@ -15,6 +16,7 @@ Shader "UDF/Glow"
             Tags { "LightMode"="UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
+            ZTest [_ZTest]
             Cull Off
             HLSLPROGRAM
             #pragma vertex vert

@@ -7,3 +7,11 @@ UserSettings/
 *.csproj
 *.sln
 *.slnx
+
+# local tooling / scratch, not part of the Unity project
+.vs/
+obj/
+/Staging/
+/output/
+/.video-tools/
+/.tripo/

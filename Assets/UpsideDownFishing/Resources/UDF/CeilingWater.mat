@@ -25,14 +25,31 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _EdgeFade: 0.04
-    - _FoamWidth: 0.12
-    - _WaveScale: 2.2
-    - _WaveSpeed: 0.35
+    - _CausticNet: 0.85
+    - _Choppiness: 1.6
+    - _DetailStrength: 0.6
+    - _EdgeAlphaFade: 0.015
+    - _FoamBand: 0.16
+    - _Gloss: 900
+    - _NetScale: 1.6
+    - _RimDrop: 0.07
+    - _RimWidth: 0.38
+    - _RippleHeight: 0.005
+    - _RippleSpeed: 0.55
+    - _ScatterIntensity: 0.9
+    - _Sparkle: 0.9
+    - _SpecIntensity: 0.5
+    - _WaveDir: 25
+    - _WaveHeight: 0.022
+    - _WaveLength: 1.6
+    - _WaveTimeScale: 0.8
     m_Colors:
-    - _DeepColor: {r: 0.11999995, g: 0.34999996, b: 0.75, a: 0.75}
-    - _FoamColor: {r: 1, g: 1, b: 1, a: 0.95}
-    - _HighlightColor: {r: 0.85, g: 1, b: 1, a: 1}
-    - _ShallowColor: {r: 0.34999996, g: 0.85, b: 0.95, a: 0.55}
+    - _DeepTint: {r: 0.059999965, g: 0.45999992, b: 0.8, a: 0.86}
+    - _FoamTint: {r: 0.96999997, g: 1, b: 1, a: 0.95}
+    - _ReflectColor: {r: 0.86, g: 0.95, b: 1, a: 1}
+    - _ScatterColor: {r: 0.75, g: 1, b: 1, a: 1}
+    - _SpecDir: {r: 0.35, g: -1, b: 0.25, a: 0}
+    - _SunDir: {r: -0.2, g: 1, b: 0.3, a: 0}
+    - _WaterTint: {r: 0.29999995, g: 0.8, b: 0.97999996, a: 0.32}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

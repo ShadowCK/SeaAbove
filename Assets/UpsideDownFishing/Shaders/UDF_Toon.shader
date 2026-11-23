@@ -30,6 +30,7 @@ Shader "UDF/Toon"
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "UDF_Underwater.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor, _ShadeColor, _RimColor, _Emission;
@@ -70,6 +71,8 @@ Shader "UDF/Toon"
                 half rim = pow(1.0h - saturate(dot(n, v)), _RimPower);
                 col += _RimColor.rgb * rim * 0.6h;
                 col += _Emission.rgb;
+                // things inside the sea (fish, lure) sink into the water colour with distance
+                col = UDF_ApplyWaterFog(col, i.positionWS);
                 return half4(col, 1);
             }
             ENDHLSL

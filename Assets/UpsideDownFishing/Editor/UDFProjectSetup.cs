@@ -26,7 +26,9 @@ namespace UpsideDownFishing.EditorTools
         static readonly (string name, string shader)[] Materials =
         {
             ("Toon", "UDF/Toon"), ("CeilingWater", "UDF/CeilingWater"), ("WaterVolume", "UDF/WaterVolume"),
-            ("Glow", "UDF/Glow"), ("DepthOccluder", "UDF/DepthOccluder"),
+            ("Glow", "UDF/Glow"), ("DepthOccluder", "UDF/DepthOccluder"), ("Underwater", "UDF/Underwater"),
+            ("WallCaustics", "UDF/WallCaustics"), ("Bubble", "UDF/Bubble"),
+            ("TankWater", "UDF/TankWater"), ("Glass", "UDF/Glass"), ("Icon", "UDF/Icon"),
         };
 
         [MenuItem("UpsideDownFishing/Setup Project (materials + Main scene)", priority = 0)]
@@ -110,6 +112,8 @@ namespace UpsideDownFishing.EditorTools
                 foreach (var l in general.Manager.activeLoaders) log.AppendLine("Android XR loader: " + l.GetType().FullName);
             else log.AppendLine("WARNING: no XR Plug-in Management settings for Android");
 
+            PlayerSettings.productName = "Sea Above";
+            // package id kept from the prototype so existing installs / saves update in place
             PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.xicheng.upsidedownfishing");
             AssetDatabase.SaveAssets();
             log.AppendLine("Setup complete.");

@@ -6,7 +6,8 @@ namespace UpsideDownFishing
 {
     /// <summary>
     /// Minimal world-space HUD built from TextMesh + quads (no TMP import required):
-    /// lazy-follow hint line, tension/stamina bars by the rod, catch cards, toasts, and the
+    /// gaze-following hint line, the fight gauges (<see cref="FightGauges"/>: a stamina capsule by
+    /// the fish and a curved tension gauge by the rod), catch cards, toasts, and the
     /// collection book on the left wrist (toggle with Y).
     /// </summary>
     public class GameHUD : MonoBehaviour
@@ -17,12 +18,12 @@ namespace UpsideDownFishing
         public RoomUnderstanding room;
         public Transform leftHand;
         public SfxBank sfx;
+        public FishCarrier carrier;
 
         Font m_Font;
         TextMesh m_Hint, m_Toast, m_Card, m_Book;
-        Transform m_HintRoot, m_CardRoot, m_BookRoot, m_BarRoot;
-        Transform m_TensionFill, m_StaminaFill;
-        Material m_TensionMat;
+        string m_HintSrc;
+        Transform m_HintRoot, m_CardRoot, m_BookRoot;
         float m_ToastTimer, m_CardTimer;
         bool m_BookOpen;
         readonly Queue<string> m_Toasts = new Queue<string>();
@@ -51,20 +52,23 @@ namespace UpsideDownFishing
             m_Book = MakeText("BookText", m_BookRoot, new Vector3(-0.11f, 0.07f, 0), 0.0028f, TextAnchor.UpperLeft, Color.white);
             m_BookRoot.gameObject.SetActive(false);
 
-            // tension / stamina bars above the rod hand
-            m_BarRoot = new GameObject("FightBars").transform;
-            m_BarRoot.SetParent(transform, false);
-            MakeBar("TensionBg", new Vector3(0, 0, 0.001f), new Vector3(0.2f, 0.018f, 0.002f), new Color(0, 0, 0, 0.55f));
-            m_TensionFill = MakeBar("TensionFill", Vector3.zero, new Vector3(0.2f, 0.014f, 0.002f), Color.white, out m_TensionMat);
-            MakeBar("StaminaBg", new Vector3(0, -0.026f, 0.001f), new Vector3(0.2f, 0.01f, 0.002f), new Color(0, 0, 0, 0.55f));
-            m_StaminaFill = MakeBar("StaminaFill", new Vector3(0, -0.026f, 0), new Vector3(0.2f, 0.007f, 0.002f), new Color(0.4f, 0.8f, 1f, 0.95f));
-            MakeText("TensionLabel", m_BarRoot, new Vector3(0, 0.025f, 0), 0.0025f, TextAnchor.MiddleCenter, Color.white).text = "张力 / 鱼的体力";
-            m_BarRoot.gameObject.SetActive(false);
+            // ---- fight gauges: fish stamina next to the fish, line tension next to the rod
+            gameObject.AddComponent<FightGauges>().Init(head, rod, m_Font);
 
             rod.Message += ShowToast;
             rod.Landed += ShowCatchCard;
+            if (carrier != null)
+            {
+                carrier.Stored += ShowCatchCard;
+                carrier.Message += ShowToast;
+                carrier.Released += (f, fresh) =>
+                {
+                    if (fresh) ShowCatchCard(f);
+                    ShowToast($"Released the {f.Species.displayName}. Back to the sea above!");
+                };
+            }
             collection.Unlocked += msg => { ShowToast(msg); sfx?.Play(SfxBank.Unlock, head.transform.position); };
-            collection.RodChanged += r => ShowToast($"装备：{r.displayName}");
+            collection.RodChanged += r => ShowToast($"Equipped: {r.displayName}");
         }
 
         TextMesh MakeText(string name, Transform parent, Vector3 pos, float size, TextAnchor anchor, Color c)
@@ -85,20 +89,27 @@ namespace UpsideDownFishing
             return tm;
         }
 
-        Transform MakeBar(string name, Vector3 pos, Vector3 size, Color c) => MakeBar(name, pos, size, c, out _);
-
-        Transform MakeBar(string name, Vector3 pos, Vector3 size, Color c, out Material mat)
-        {
-            var k = new MeshKit();
-            k.Box(new Vector3(0.5f, 0, 0), Vector3.one, Color.white); // pivot on the left edge
-            mat = UDFAssets.Glow_(c);
-            var t = MeshKit.Spawn(name, k.Build(name), mat, m_BarRoot).transform;
-            t.localPosition = pos - new Vector3(size.x * 0.5f, 0, 0);
-            t.localScale = size;
-            return t;
-        }
-
         void ShowToast(string msg) { m_Toasts.Enqueue(msg); }
+
+        /// <summary>Word-wraps plain text (TextMesh has no wrapping) at about <paramref name="width"/> characters.</summary>
+        static string Wrap(string text, int width)
+        {
+            if (string.IsNullOrEmpty(text) || text.Length <= width) return text;
+            var sb = new StringBuilder(text.Length + 8);
+            foreach (var para in text.Split('\n'))
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                int lineLen = 0;
+                foreach (var word in para.Split(' '))
+                {
+                    if (lineLen > 0 && lineLen + 1 + word.Length > width) { sb.Append('\n'); lineLen = 0; }
+                    else if (lineLen > 0) { sb.Append(' '); lineLen++; }
+                    sb.Append(word);
+                    lineLen += word.Length;
+                }
+            }
+            return sb.ToString();
+        }
 
         void ShowCatchCard(FishAgent fish)
         {
@@ -106,8 +117,8 @@ namespace UpsideDownFishing
             int count = collection.Data.Count(sp.id);
             string rc = ColorUtility.ToHtmlStringRGB(FishSpecies.RarityColor(sp.rarity));
             m_Card.richText = true;
-            m_Card.text = $"{(count == 1 ? "<color=#FFD54A>NEW!</color>\n" : "")}<size=90>{sp.displayName}</size>\n{sp.englishName}\n" +
-                          $"<color=#{rc}>【{FishSpecies.RarityName(sp.rarity)}】</color>  +{sp.coins} 金币\n<size=40>{sp.description}</size>";
+            m_Card.text = $"{(count == 1 ? "<color=#FFD54A>NEW!</color>\n" : "")}<size=90>{sp.displayName}</size>\n" +
+                          $"<color=#{rc}>[{FishSpecies.RarityName(sp.rarity)}]</color>  +{sp.coins} coins\n<size=40>{Wrap(sp.description, 44)}</size>";
             m_CardTimer = 4f;
             m_CardRoot.gameObject.SetActive(true);
             Vector3 fwd = head.transform.forward.Flat();
@@ -119,21 +130,29 @@ namespace UpsideDownFishing
         void Update()
         {
             if (head == null) return;
-            // lazy-follow hint panel
-            Vector3 fwd = head.transform.forward.Flat();
-            Vector3 target = head.transform.position + fwd * 1.1f + Vector3.down * 0.38f;
-            m_HintRoot.position = Vector3.Lerp(m_HintRoot.position, target, Time.deltaTime * 3f);
-            m_HintRoot.rotation = Quaternion.Slerp(m_HintRoot.rotation, Quaternion.LookRotation(m_HintRoot.position - head.transform.position), Time.deltaTime * 5f);
+            Transform h = head.transform;
+            Vector3 eye = h.position;
+            {
+                // lazy-follow in front of the gaze, slightly below its centre (works looking up too)
+                Vector3 right = h.right; right.y = 0;
+                if (right.sqrMagnitude < 1e-4f) right = Vector3.right;
+                right.Normalize();
+                Vector3 target = eye + Quaternion.AngleAxis(16f, right) * h.forward * 1.1f;
+                m_HintRoot.position = Vector3.Lerp(m_HintRoot.position, target, Time.deltaTime * 3f);
+                m_HintRoot.rotation = Quaternion.Slerp(m_HintRoot.rotation, Quaternion.LookRotation(m_HintRoot.position - eye, h.up), Time.deltaTime * 5f);
+            }
 
             string roomMsg = room.CurrentStatus == RoomUnderstanding.Status.Ready ? "" : room.StatusMessage;
-            m_Hint.text = !string.IsNullOrEmpty(roomMsg) ? roomMsg : rod.Hint;
+            string carryHint = carrier != null ? carrier.Hint : "";
+            string hint = !string.IsNullOrEmpty(roomMsg) ? roomMsg : !string.IsNullOrEmpty(carryHint) ? carryHint : rod.Hint;
+            if (hint != m_HintSrc) { m_HintSrc = hint; m_Hint.text = Wrap(hint, 46); }
 
             // toasts
             m_ToastTimer -= Time.deltaTime;
             if (m_ToastTimer <= 0)
             {
                 m_Toast.text = "";
-                if (m_Toasts.Count > 0) { m_Toast.text = m_Toasts.Dequeue(); m_ToastTimer = 2.5f; }
+                if (m_Toasts.Count > 0) { m_Toast.text = Wrap(m_Toasts.Dequeue(), 40); m_ToastTimer = 2.5f; }
             }
 
             // catch card pop
@@ -145,23 +164,9 @@ namespace UpsideDownFishing
                 if (m_CardTimer <= 0) m_CardRoot.gameObject.SetActive(false);
             }
 
-            // fight bars
-            bool fighting = rod.CurrentState == FishingRod.State.Fighting && rod.HookedFish != null;
-            m_BarRoot.gameObject.SetActive(fighting);
-            if (fighting)
-            {
-                m_BarRoot.position = rod.transform.position + Vector3.up * 0.16f;
-                m_BarRoot.rotation = Quaternion.LookRotation(m_BarRoot.position - head.transform.position);
-                float t = Mathf.Clamp01(rod.Tension);
-                m_TensionFill.localScale = new Vector3(0.2f * Mathf.Max(0.01f, t), 0.014f, 0.002f);
-                m_TensionMat.SetColor("_BaseColor", t > 0.85f ? new Color(1f, 0.3f, 0.3f) : t < 0.15f ? new Color(1f, 0.85f, 0.3f) : new Color(0.4f, 1f, 0.5f));
-                var f = rod.HookedFish;
-                m_StaminaFill.localScale = new Vector3(0.2f * Mathf.Max(0.01f, Mathf.Clamp01(f.Stamina / f.Species.stamina)), 0.007f, 0.002f);
-            }
-
             // collection book
             if (XRInput.SecondaryDown(Hand.Left)) m_BookOpen = !m_BookOpen;
-            if (XRInput.PrimaryDown(Hand.Left)) { room.Rescan(); ShowToast("重新扫描房间……"); }
+            if (XRInput.PrimaryDown(Hand.Left)) { room.Rescan(); ShowToast("Rescanning your room..."); }
             m_BookRoot.gameObject.SetActive(m_BookOpen);
             if (m_BookOpen) m_Book.text = BuildBookText();
         }
@@ -170,21 +175,21 @@ namespace UpsideDownFishing
         {
             var d = collection.Data;
             var sb = new StringBuilder();
-            sb.AppendLine($"<b>图鉴</b>  {d.caught.Count}/{FishSpecies.All.Count}    金币 {d.coins}");
-            sb.AppendLine($"鱼竿：{collection.CurrentRod.displayName}   (右手 B 切换)");
+            sb.AppendLine($"<b>Fish Log</b>  {d.caught.Count}/{FishSpecies.All.Count}    Coins {d.coins}");
+            sb.AppendLine($"Rod: {collection.CurrentRod.displayName}   (right B to switch)");
             sb.AppendLine();
             foreach (var sp in FishSpecies.All)
             {
                 int n = d.Count(sp.id);
                 string rc = ColorUtility.ToHtmlStringRGB(FishSpecies.RarityColor(sp.rarity));
-                sb.AppendLine(n > 0 ? $"<color=#{rc}>●</color> {sp.displayName} ×{n}" : $"<color=#{rc}>○</color> ？？？");
+                sb.AppendLine(n > 0 ? $"<color=#{rc}>●</color> {sp.displayName} x{n}" : $"<color=#{rc}>○</color> ???");
             }
             sb.AppendLine();
-            sb.AppendLine("<b>装饰品</b>");
+            sb.AppendLine("<b>Decorations</b>");
             foreach (var dec in CollectionManager.Decor)
-                sb.AppendLine(d.unlockedDecor.Contains(dec.id) ? $"√ {dec.displayName}" : $"[未解锁] {dec.requirement}");
+                sb.AppendLine(d.unlockedDecor.Contains(dec.id) ? $"+ {dec.displayName}" : $"[Locked] {dec.requirement}");
             sb.AppendLine();
-            sb.AppendLine("左手 X：重新扫描房间");
+            sb.AppendLine("Left X: rescan room");
             return sb.ToString();
         }
     }

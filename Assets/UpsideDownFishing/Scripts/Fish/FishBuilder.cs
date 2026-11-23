@@ -18,7 +18,14 @@ namespace UpsideDownFishing
         public static Material GetMaterial(FishSpecies sp)
         {
             if (s_Materials.TryGetValue(sp.id, out var m)) return m;
-            m = UDFAssets.Toon_(Color.white, sp.emission);
+            var model = FishModels.Get(sp);
+            if (model != null)
+            {
+                // textured Tripo fish with sea lighting; same swim wiggle parameters
+                m = new Material(model.material);
+                m.SetColor("_Emission", sp.emission);
+            }
+            else m = UDFAssets.Toon_(Color.white, sp.emission);
             float L = sp.length;
             m.SetFloat("_SwimAmp", sp.shape == BodyShape.Eel ? L * 0.12f : sp.shape == BodyShape.Ray ? 0f : L * 0.07f);
             m.SetFloat("_SwimFreq", sp.shape == BodyShape.Eel ? 14f / L : 5f / L);
@@ -32,6 +39,8 @@ namespace UpsideDownFishing
         public static Mesh GetMesh(FishSpecies sp)
         {
             if (s_Meshes.TryGetValue(sp.id, out var mesh)) return mesh;
+            var model = FishModels.Get(sp);
+            if (model != null) { s_Meshes[sp.id] = model.mesh; return model.mesh; }
             var k = new MeshKit();
             float L = sp.length;
             float h, w;

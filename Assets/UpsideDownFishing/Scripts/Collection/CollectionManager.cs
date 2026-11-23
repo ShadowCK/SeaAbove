@@ -41,17 +41,17 @@ namespace UpsideDownFishing
 
         public static readonly List<RodDef> Rods = new List<RodDef>
         {
-            new RodDef { id = "bamboo", displayName = "竹节竿", unlockCatches = 0, lineStrength = 1.0f, reelSpeed = 0.35f, luck = 1.0f, color = new Color(0.85f, 0.7f, 0.4f), accent = new Color(0.4f, 0.75f, 0.35f) },
-            new RodDef { id = "coral", displayName = "珊瑚竿", unlockCatches = 6, lineStrength = 1.3f, reelSpeed = 0.45f, luck = 1.6f, color = new Color(1f, 0.55f, 0.6f), accent = new Color(1f, 0.85f, 0.5f) },
-            new RodDef { id = "starlight", displayName = "星辉竿", unlockCatches = 15, lineStrength = 1.7f, reelSpeed = 0.55f, luck = 2.5f, color = new Color(0.35f, 0.4f, 0.9f), accent = new Color(1f, 0.95f, 0.5f) },
+            new RodDef { id = "bamboo", displayName = "Bamboo Rod", unlockCatches = 0, lineStrength = 1.0f, reelSpeed = 0.35f, luck = 1.0f, color = new Color(0.85f, 0.7f, 0.4f), accent = new Color(0.4f, 0.75f, 0.35f) },
+            new RodDef { id = "coral", displayName = "Coral Rod", unlockCatches = 6, lineStrength = 1.3f, reelSpeed = 0.45f, luck = 1.6f, color = new Color(1f, 0.55f, 0.6f), accent = new Color(1f, 0.85f, 0.5f) },
+            new RodDef { id = "starlight", displayName = "Starlight Rod", unlockCatches = 15, lineStrength = 1.7f, reelSpeed = 0.55f, luck = 2.5f, color = new Color(0.35f, 0.4f, 0.9f), accent = new Color(1f, 0.95f, 0.5f) },
         };
 
         public static readonly List<DecorDef> Decor = new List<DecorDef>
         {
-            new DecorDef { id = "jelly_lantern", displayName = "水母灯", requirement = "累计钓到 3 条鱼", isUnlocked = d => d.totalCatches >= 3 },
-            new DecorDef { id = "bubble_ring", displayName = "泡泡环", requirement = "钓到灯笼河豚", isUnlocked = d => d.Count("lantern_puff") > 0 },
-            new DecorDef { id = "coral_chime", displayName = "珊瑚风铃", requirement = "钓到任意稀有鱼", isUnlocked = d => d.HasRarity(Rarity.Rare) },
-            new DecorDef { id = "star_mobile", displayName = "星星吊饰", requirement = "收集全部 7 种鱼", isUnlocked = d => d.caught.Count >= FishSpecies.All.Count },
+            new DecorDef { id = "jelly_lantern", displayName = "Jelly Lantern", requirement = "Catch 3 fish", isUnlocked = d => d.totalCatches >= 3 },
+            new DecorDef { id = "bubble_ring", displayName = "Bubble Ring", requirement = "Catch a Lantern Puff", isUnlocked = d => d.Count("lantern_puff") > 0 },
+            new DecorDef { id = "coral_chime", displayName = "Coral Chime", requirement = "Catch any Rare fish", isUnlocked = d => d.HasRarity(Rarity.Rare) },
+            new DecorDef { id = "star_mobile", displayName = "Star Mobile", requirement = $"Collect all {FishSpecies.All.Count} species", isUnlocked = d => d.caught.Count >= FishSpecies.All.Count },
         };
 
         const string Key = "UDF_Save_v1";
@@ -97,18 +97,18 @@ namespace UpsideDownFishing
                 if (!Data.unlockedRods.Contains(rod.id) && Data.totalCatches >= rod.unlockCatches)
                 {
                     Data.unlockedRods.Add(rod.id);
-                    Unlocked?.Invoke($"解锁新鱼竿：{rod.displayName}！(按 B 切换)");
+                    Unlocked?.Invoke($"New rod unlocked: {rod.displayName}! (Press B to switch)");
                 }
             foreach (var d in Decor)
                 if (!Data.unlockedDecor.Contains(d.id) && d.isUnlocked(Data))
                 {
                     Data.unlockedDecor.Add(d.id);
-                    Unlocked?.Invoke($"解锁装饰品：{d.displayName}！");
+                    Unlocked?.Invoke($"New decoration unlocked: {d.displayName}!");
                     DecorUnlocked?.Invoke(d);
                 }
             foreach (var s in FishSpecies.All)
                 if (s.unlockAfterCatches == Data.totalCatches && s.unlockAfterCatches > 0 && Data.rodTier >= s.minRodTier)
-                    Unlocked?.Invoke($"天花板之海里出现了新的鱼影……");
+                    Unlocked?.Invoke("New shadows are swimming in the sea above...");
             Save();
         }
 
@@ -138,6 +138,9 @@ namespace UpsideDownFishing
             return FishSpecies.All[0];
         }
 
-        float Weight(FishSpecies s) => s.spawnWeight * (s.rarity >= Rarity.Rare ? CurrentRod.luck : 1f);
+        /// <summary>Still learning: beginner fish are common in the sea and go for the lure first.</summary>
+        public bool IsNovice => Data.totalCatches < 5;
+
+        float Weight(FishSpecies s) => s.spawnWeight * (s.rarity >= Rarity.Rare ? CurrentRod.luck : 1f) * (s.beginner && IsNovice ? 3f : 1f);
     }
 }

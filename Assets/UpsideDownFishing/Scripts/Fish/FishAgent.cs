@@ -8,7 +8,15 @@ namespace UpsideDownFishing
     /// </summary>
     public class FishAgent : MonoBehaviour
     {
-        public enum State { Swimming, Approaching, Nibbling, Hooked, Landing, Floating, Escaping }
+        public enum State { Swimming, Approaching, Nibbling, Hooked, Landing, Floating, Escaping, Held, Released }
+
+        /// <summary>Every live fish (small list; used to find loose fish near the hand).</summary>
+        public static readonly System.Collections.Generic.List<FishAgent> All = new System.Collections.Generic.List<FishAgent>();
+        void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDisable() { All.Remove(this); }
+
+        /// <summary>Out of the sea and free in the room (can be grabbed by hand).</summary>
+        public bool IsLoose => CurrentState == State.Landing || CurrentState == State.Floating;
 
         public FishSpecies Species { get; private set; }
         public State CurrentState { get; private set; }
@@ -41,7 +49,8 @@ namespace UpsideDownFishing
             Stamina = sp.stamina;
             m_Speed = sp.swimSpeed * Random.Range(0.8f, 1.2f);
             var p = m_Room.RandomPointInside(0.3f);
-            transform.position = new Vector3(p.x, Random.Range(WaterMinY, WaterMaxY), p.y);
+            float r0 = Random.value;
+            transform.position = new Vector3(p.x, Mathf.Lerp(WaterMinY, WaterMaxY, r0 * r0), p.y);
             transform.rotation = Quaternion.LookRotation(Random.onUnitSphere.Flat(), m_UpVector);
             GetComponent<MeshRenderer>().material.SetFloat("_SwimPhase", Random.value * 10f);
             PickWaterTarget();
@@ -49,7 +58,8 @@ namespace UpsideDownFishing
         }
 
         float WaterMinY => m_Water.SurfaceY + 0.12f + Species.length * 0.3f;
-        float WaterMaxY => m_Water.SeabedY - 0.2f;
+        // stay in the bright band under the surface; deeper they would vanish into the blue
+        float WaterMaxY => Mathf.Max(WaterMinY + 0.2f, m_Water.SurfaceY + CeilingWater.ShallowBand - Species.length * 0.3f);
 
         void SetState(State s) { CurrentState = s; m_StateTime = 0; }
 
@@ -58,7 +68,7 @@ namespace UpsideDownFishing
         public void AttractTo(Vector3 lure)
         {
             m_LurePos = lure;
-            m_Nibbles = Random.Range(1, 4);
+            m_Nibbles = Species.beginner ? Random.Range(0, 2) : Random.Range(1, 4);
             SetState(State.Approaching);
         }
 
@@ -93,6 +103,79 @@ namespace UpsideDownFishing
             transform.Rotate(0, Mathf.Sin(Time.time * 25f) * thrash * 25f, 0, Space.Self);
         }
 
+        /// <summary>Taken out of the sim: the line or a hand drives the transform.</summary>
+        public void Hold()
+        {
+            SetState(State.Held);
+            m_UpVector = Vector3.up;
+            gameObject.layer = 0;
+        }
+
+        /// <summary>Slipped out of the hand: tumbles away and then floats around the room.</summary>
+        public void ReleaseLoose(Vector3 velocity)
+        {
+            SetState(State.Landing);
+            m_UpVector = Vector3.up;
+            m_Velocity = velocity;
+        }
+
+        /// <summary>Raised when a released fish reaches the ceiling sea again.</summary>
+        public System.Action<FishAgent> ReturnedToSea;
+        bool m_ReleaseSplashed;
+
+        /// <summary>Released back to the wild: it floats up out of the room, splashes into the ceiling sea
+        /// and swims off with the school (it won't take a lure again for a while).</summary>
+        public void Release(Vector3 velocity)
+        {
+            SetState(State.Released);
+            m_UpVector = Vector3.up;
+            m_Velocity = velocity;
+            m_ReleaseSplashed = false;
+            gameObject.layer = 0;
+        }
+
+        void UpdateReleased()
+        {
+            float dt = Time.deltaTime;
+            // the ceiling sea draws it home: rise, while the toss drifts out sideways
+            m_Velocity += Vector3.up * 3.5f * dt;
+            float damp = Mathf.Exp(-1.5f * dt);
+            m_Velocity.x *= damp; m_Velocity.z *= damp;
+            m_Velocity.y = Mathf.Clamp(m_Velocity.y, -1.5f, 2.2f);
+            var pos = transform.position + m_Velocity * dt;
+            var xz = m_Room.ClampInside(new Vector2(pos.x, pos.z), 0.1f + Species.length * 0.3f);
+            pos = new Vector3(xz.x, pos.y, xz.y);
+            transform.position = pos;
+
+            // nose toward where it is going, wriggling like it swims
+            Vector3 dir = m_Velocity.sqrMagnitude > 0.01f ? m_Velocity.normalized : Vector3.up;
+            Vector3 upHint = Mathf.Abs(dir.y) > 0.9f ? transform.up : (m_ReleaseSplashed ? Vector3.down : Vector3.up);
+            if (Mathf.Abs(Vector3.Dot(upHint, dir)) > 0.98f) upHint = transform.right;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir, upHint), dt * 5f);
+            transform.Rotate(0, Mathf.Sin(m_StateTime * 18f) * 30f * dt, 0, Space.Self);
+
+            if (!m_ReleaseSplashed && pos.y >= m_Water.SurfaceY)
+            {
+                m_ReleaseSplashed = true;
+                var surf = new Vector3(pos.x, m_Water.SurfaceY, pos.z);
+                SplashFx.Play(surf, Mathf.Lerp(0.6f, 1.1f, Species.length));
+                CeilingWater.AddRipple(surf);
+                m_UpVector = Vector3.down;
+                m_Velocity *= 0.4f;
+                ReturnedToSea?.Invoke(this);
+            }
+            if ((m_ReleaseSplashed && pos.y >= WaterMinY) || m_StateTime > 6f)
+            {
+                transform.position = new Vector3(pos.x, Mathf.Clamp(pos.y, WaterMinY, WaterMaxY), pos.z);
+                m_UpVector = Vector3.down;
+                m_EscapeUntil = Time.time + 15f;
+                Stamina = Species.stamina;
+                SetState(State.Escaping);
+                PickWaterTarget();
+                m_Speed = Species.swimSpeed * 2f;
+            }
+        }
+
         /// <summary>Pulled out through the surface into the room.</summary>
         public void Land()
         {
@@ -119,7 +202,7 @@ namespace UpsideDownFishing
                 case State.Approaching:
                 {
                     Vector3 ahead = m_LurePos + Vector3.up * (Species.length * 0.6f);
-                    Steer(ahead, m_Speed * 0.8f, 2.5f);
+                    Steer(ahead, Species.beginner ? Mathf.Max(m_Speed, 0.35f) * 1.2f : m_Speed * 0.8f, 2.5f);
                     if ((transform.position - ahead).sqrMagnitude < 0.01f) SetState(State.Nibbling);
                     if (m_StateTime > 12f) LoseInterest();
                     break;
@@ -144,6 +227,10 @@ namespace UpsideDownFishing
                 case State.Hooked:
                     break;
 
+                case State.Released:
+                    UpdateReleased();
+                    break;
+
                 case State.Landing:
                     // pop out of the water, then decelerate and start floating
                     m_Velocity = Vector3.Lerp(m_Velocity, Vector3.zero, Time.deltaTime * 1.5f);
@@ -163,7 +250,9 @@ namespace UpsideDownFishing
         void PickWaterTarget()
         {
             var p = m_Room.RandomPointInside(0.25f + Species.length * 0.5f);
-            m_Target = new Vector3(p.x, Random.Range(WaterMinY, WaterMaxY), p.y);
+            // favour the bright shallows right under the surface (where the player sees them)
+            float r = Random.value;
+            m_Target = new Vector3(p.x, Mathf.Lerp(WaterMinY, WaterMaxY, r * r * r), p.y);
             m_RetargetTimer = Random.Range(3f, 7f);
         }
 

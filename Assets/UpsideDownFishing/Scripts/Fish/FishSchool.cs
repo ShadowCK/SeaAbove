@@ -18,6 +18,9 @@ namespace UpsideDownFishing
         int m_TargetCount;
 
         public FishAgent Engaged => m_Engaged;
+
+        /// <summary>Debug / testing: make this fish the one on the line.</summary>
+        public void DebugEngage(FishAgent f) => m_Engaged = f;
         public System.Action<FishAgent> FishNibbled, FishBit;
 
         public void Init(CeilingWater water)
@@ -31,6 +34,8 @@ namespace UpsideDownFishing
 
         void Spawn()
         {
+            // released fish rejoin the sea, so a scheduled replacement may no longer be needed
+            if (m_Water == null || m_InWater.Count >= m_TargetCount) return;
             var sp = collection.PickSpecies();
             var go = FishBuilder.Create(sp, transform);
             var agent = go.AddComponent<FishAgent>();
@@ -59,7 +64,9 @@ namespace UpsideDownFishing
                 if (f == null || !f.CanBeAttracted) continue;
                 float d = Vector3.Distance(f.transform.position, lurePos);
                 float score = d * Random.Range(0.6f, 1.4f);
-                if (d < 3.5f && score < bestScore) { bestScore = score; best = f; }
+                bool easy = f.Species.beginner;
+                if (easy) score *= collection != null && collection.IsNovice ? 0.3f : 0.85f;   // new players get the easy one
+                if (d < (easy ? 4.5f : 3.5f) && score < bestScore) { bestScore = score; best = f; }
             }
             if (best != null) { m_Engaged = best; best.AttractTo(lurePos); }
             else m_NextAttractTime = Time.time + 1f;
@@ -71,6 +78,28 @@ namespace UpsideDownFishing
             if (escaped) m_Engaged.Escape(); else m_Engaged.LoseInterest();
             m_Engaged = null;
             m_NextAttractTime = Time.time + Random.Range(2f, 5f);
+        }
+
+        /// <summary>The engaged fish was pulled out and now hangs on the line: it leaves the sea
+        /// (a replacement spawns later) and is driven by the rod / the player's hand.</summary>
+        public FishAgent TakeEngaged()
+        {
+            var f = m_Engaged;
+            m_Engaged = null;
+            if (f == null) return null;
+            m_InWater.Remove(f);
+            f.Hold();
+            Invoke(nameof(Spawn), Random.Range(3f, 8f));
+            m_NextAttractTime = Time.time + Random.Range(2f, 4f);
+            return f;
+        }
+
+        /// <summary>A released fish swam back up into the sea: it is part of the school again.</summary>
+        public void Adopt(FishAgent f)
+        {
+            if (f == null || m_InWater.Contains(f)) return;
+            f.transform.SetParent(transform, true);
+            m_InWater.Add(f);
         }
 
         /// <summary>The engaged fish was pulled out: it leaves the sea and floats in the room.</summary>
