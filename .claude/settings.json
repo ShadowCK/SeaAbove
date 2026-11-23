@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"E:\\xicheng\\UpsideDownFishing\\.claude\\hooks\\pico-general-agentic-tools/ingest.mjs\"",
+            "timeout": 65
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Skill|Read|mcp__pico-(?:dev-knowledge|spatial-editor)__)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"E:\\xicheng\\UpsideDownFishing\\.claude\\hooks\\pico-general-agentic-tools/ingest.mjs\"",
+            "timeout": 65
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^mcp__pico-(?:dev-knowledge|spatial-editor)__",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"E:\\xicheng\\UpsideDownFishing\\.claude\\hooks\\pico-general-agentic-tools/ingest.mjs\"",
+            "timeout": 65
+          }
+        ]
+      }
+    ]
+  }
+}
