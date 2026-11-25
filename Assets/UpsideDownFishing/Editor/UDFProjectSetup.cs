@@ -113,8 +113,7 @@ namespace UpsideDownFishing.EditorTools
             else log.AppendLine("WARNING: no XR Plug-in Management settings for Android");
 
             PlayerSettings.productName = "Sea Above";
-            // package id kept from the prototype so existing installs / saves update in place
-            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.xicheng.upsidedownfishing");
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.zhao.seaabove");
             AssetDatabase.SaveAssets();
             log.AppendLine("Setup complete.");
             return log.ToString();
