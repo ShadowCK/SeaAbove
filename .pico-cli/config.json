@@ -1,7 +1,7 @@
 {
   "project_name": "UpsideDownFishing",
   "mode": "picoxr",
-  "unity_version": "6000.3.26f1",
+  "unity_version": "6000.0.85f2",
   "platform": "android",
   "devices": [
     "pico swan"

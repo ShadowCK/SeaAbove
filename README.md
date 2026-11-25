@@ -4,7 +4,7 @@
 
 SeaAbove is a cozy mixed reality fishing game for PICO headsets. It scans your real room and turns the ceiling into the surface of an upside-down sea. Cast your line up into the water, fight fish with a hand-cranked reel, collect quirky species and keep your favourites in an upside-down aquarium standing in your room.
 
-- Unity **6000.3.26f1** · URP · PICO Unity SDK (XR, `picoxr` mode) · Android (PICO)
+- Unity **6000.0.85f2** · URP · PICO Unity SDK (XR, `picoxr` mode) · Android (PICO)
 - Package name: `com.zhao.seaabove`
 - 3D models (fish, rod, tackle, aquarium) generated with Tripo; water, UI and effects are procedural
 
@@ -19,7 +19,7 @@ SeaAbove is a cozy mixed reality fishing game for PICO headsets. It scans your r
 
 ## Getting started
 
-1. Open the project with Unity **6000.3.26f1** (build target: Android).
+1. Open the project with Unity **6000.0.85f2** (build target: Android).
 2. Run **UpsideDownFishing → Setup Project (materials + Main scene)** once. It is safe to run again.
 3. Open `Assets/UpsideDownFishing/Scenes/Main.unity` and press Play to try it with the keyboard/mouse simulator.
 4. On device: **UpsideDownFishing → Build Android APK (Development)** writes `Builds/Android/SeaAbove.apk`; install it with `adb install -r`. On first launch, PICO room scanning starts if the headset has no room data yet.
